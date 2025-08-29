@@ -1,0 +1,62 @@
+---
+
+## 🧩 Custom Resource Definition (CRD)
+
+- **What it is**: A CRD is a schema that defines a new type of resource in Kubernetes.
+- **Purpose**: It tells the Kubernetes API server, “Hey, I want to introduce a new kind of object.”
+- **Example**: You might define a CRD called `MySQLCluster` that describes how MySQL should behave in your environment.
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: mysqlclusters.example.com
+spec:
+  group: example.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: mysqlclusters
+    singular: mysqlcluster
+    kind: MySQLCluster
+```
+
+This CRD registers `MySQLCluster` as a valid Kubernetes object type.
+
+---
+
+## 📦 Custom Resource (CR)
+
+- **What it is**: A CR is an actual instance of the type defined by a CRD.
+- **Purpose**: It represents a specific configuration or desired state for your custom object.
+- **Example**: Once the `MySQLCluster` CRD is installed, you can create a CR like this:
+
+```yaml
+apiVersion: example.com/v1
+kind: MySQLCluster
+metadata:
+  name: prod-db
+spec:
+  replicas: 3
+  version: "8.0"
+```
+
+This CR tells the Operator (or controller) to deploy a MySQL cluster named `prod-db` with 3 replicas.
+
+---
+
+## 🧠 Analogy
+
+Think of it like this:
+
+| Concept         | Analogy                     |
+|----------------|-----------------------------|
+| **CRD**         | Blueprint or class definition |
+| **CR**          | Actual object or instance     |
+
+You define the rules with a CRD, and then create real-world objects using CRs.
+
+---
