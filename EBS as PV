@@ -1,0 +1,116 @@
+**Amazon EKS accesses EBS volumes using the EBS CSI (Container Storage Interface) driver, which allows Kubernetes pods to dynamically provision and mount EBS volumes as persistent storage.**
+
+---
+
+## 🧩 How EKS Accesses EBS — Full Breakdown
+
+### 1. **EBS CSI Driver**
+
+- The **EBS CSI driver** is a Kubernetes plugin that manages the lifecycle of EBS volumes.
+- It allows pods to request storage using **PersistentVolumeClaims (PVCs)**, which are backed by EBS volumes.
+- The driver handles provisioning, attaching, mounting, and detaching volumes automatically.
+
+> You can install the driver manually or use EKS Auto Mode, which includes it by default.
+
+---
+
+### 2. **StorageClass Configuration**
+
+- You define a `StorageClass` that tells Kubernetes how to provision EBS volumes.
+- Example:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+```
+
+- This class uses the EBS CSI driver to create `gp3` volumes with `ext4` filesystem.
+
+---
+
+### 3. **PersistentVolumeClaim (PVC)**
+
+- Pods request storage by creating a PVC:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+- Kubernetes uses the EBS CSI driver to provision a new EBS volume and attach it to the node running the pod.
+
+---
+
+### 4. **Pod Volume Mount**
+
+- The pod mounts the volume using the PVC:
+
+```yaml
+volumes:
+  - name: ebs-volume
+    persistentVolumeClaim:
+      claimName: ebs-pvc
+volumeMounts:
+  - mountPath: "/data"
+    name: ebs-volume
+```
+
+- The EBS volume is mounted at `/data` inside the container.
+
+---
+
+### 5. **IAM Permissions**
+
+- The EKS node IAM role must have permissions like:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "ec2:CreateVolume",
+    "ec2:AttachVolume",
+    "ec2:DeleteVolume",
+    "ec2:DescribeVolumes"
+  ],
+  "Resource": "*"
+}
+```
+
+- These permissions allow the CSI driver to manage EBS volumes on behalf of the pod.
+
+---
+
+### 🔒 Limitations
+
+- **EBS volumes are AZ-specific** — pods must run in the same Availability Zone as the volume.
+- **Not supported on Fargate** — EBS volumes can't be mounted to Fargate pods.
+
+---
+
+### ✅ Summary
+
+- EKS uses the **EBS CSI driver** to provision and mount EBS volumes.
+- You define a **StorageClass**, create a **PVC**, and mount it in your pod.
+- IAM permissions and AZ placement are critical for success.
+
+Would you like a Terraform or Helm example to automate this setup? I can walk you through it.
+
+Sources:  
+[AWS EKS User Guide – EBS CSI Driver](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html)  
+[Stacksimplify EKS Masterclass – EBS Storage](https://deepwiki.com/stacksimplify/aws-eks-kubernetes-masterclass/4.1-ebs-storage-with-eks)  
+[EKS Workshop – EBS CSI Driver](https://www.eksworkshop.com/docs/fundamentals/storage/ebs/ebs-csi-driver/)
