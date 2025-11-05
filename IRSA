@@ -1,0 +1,69 @@
+**IRSA (IAM Roles for Service Accounts) allows Kubernetes pods in Amazon EKS to securely access AWS services using IAM roles — without needing to hardcode credentials. It works by linking a Kubernetes service account to an IAM role via an OIDC identity provider.**
+
+---
+
+## 🔐 Why IRSA Exists
+
+Traditionally, applications needed AWS credentials (access keys) to call AWS APIs. IRSA eliminates this by letting pods assume IAM roles dynamically, using Kubernetes-native identities.
+
+---
+
+## ⚙️ How IRSA Works — Step-by-Step
+
+### 1. **OIDC Identity Provider Setup**
+- When you create an EKS cluster, AWS sets up an **OIDC endpoint** (OpenID Connect).
+- This endpoint allows AWS STS (Security Token Service) to trust tokens issued by Kubernetes service accounts.
+
+### 2. **Create IAM Role with Trust Policy**
+- You create an IAM role with a **trust policy** that allows the OIDC provider to assume the role.
+- The trust policy includes conditions like:
+
+```json
+"Condition": {
+  "StringEquals": {
+    "oidc.eks.<region>.amazonaws.com/id/<cluster-id>:sub": "system:serviceaccount:<namespace>:<service-account-name>"
+  }
+}
+```
+
+### 3. **Attach IAM Policy to the Role**
+- Attach a policy that grants permissions to AWS services (e.g., `secretsmanager:GetSecretValue`).
+
+### 4. **Create Kubernetes Service Account**
+- Annotate the service account with the IAM role ARN:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-service-account
+  namespace: default
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<role-name>
+```
+
+### 5. **Pod Uses the Service Account**
+- When a pod uses this service account, the AWS SDK inside the container automatically retrieves temporary credentials from the OIDC provider.
+- These credentials allow the pod to call AWS APIs securely.
+
+---
+
+## 🔄 Authentication Flow
+
+1. Pod uses service account → token issued by Kubernetes
+2. Token sent to AWS STS → validated via OIDC
+3. STS returns temporary credentials for IAM role
+4. Pod uses credentials to access AWS services
+
+---
+
+## ✅ Benefits of IRSA
+
+- **No hardcoded credentials** in containers
+- **Fine-grained access control** per pod
+- **Auditability** via IAM and CloudTrail
+- **Scalable and secure** for multi-tenant clusters
+
+---
+
+You can find more details in [AWS’s official IRSA guide](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html). Want help generating Terraform or `eksctl` config for this setup? I can walk you through it.
