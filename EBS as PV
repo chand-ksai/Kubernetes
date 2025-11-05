@@ -114,3 +114,66 @@ Sources:
 [AWS EKS User Guide – EBS CSI Driver](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html)  
 [Stacksimplify EKS Masterclass – EBS Storage](https://deepwiki.com/stacksimplify/aws-eks-kubernetes-masterclass/4.1-ebs-storage-with-eks)  
 [EKS Workshop – EBS CSI Driver](https://www.eksworkshop.com/docs/fundamentals/storage/ebs/ebs-csi-driver/)
+
+
+#############
+No — **EKS does not require a Kubernetes service account to access EBS volumes from a pod.** Here's why:
+
+---
+
+## 🧩 How EBS Access Works in EKS
+
+EBS volumes are managed by the **Amazon EBS CSI driver**, which runs as a **Kubernetes controller and node plugin**. This driver handles:
+
+- Provisioning EBS volumes
+- Attaching them to EC2 nodes
+- Mounting them into pods
+
+---
+
+## 🔐 Who Needs IAM Permissions?
+
+The **EBS CSI driver** itself needs IAM permissions to interact with the EC2 API — not the pod or its service account.
+
+### ✅ IAM Role for EKS Node Group
+
+- The EC2 instances (nodes) in your EKS cluster must have an IAM role with permissions like:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "ec2:CreateVolume",
+    "ec2:AttachVolume",
+    "ec2:DeleteVolume",
+    "ec2:DescribeVolumes",
+    "ec2:DetachVolume"
+  ],
+  "Resource": "*"
+}
+```
+
+This role is typically attached to the node group when you create the EKS cluster.
+
+---
+
+## 🚫 No IRSA Required
+
+Unlike accessing **AWS Secrets Manager** or **S3**, which require **IRSA (IAM Roles for Service Accounts)**, EBS access does **not** involve the pod's service account.
+
+- **Pods don’t need IAM roles**
+- **No service account annotations**
+- **No OIDC or STS token exchange**
+
+---
+
+## ✅ Summary
+
+| Component | Needs IAM Role? | Needs Service Account? |
+|-----------|------------------|-------------------------|
+| EBS CSI Driver | ✅ Yes (via node IAM role) | ❌ No |
+| Pod accessing EBS | ❌ No | ❌ No |
+
+---
+
+Let me know if you'd like a Terraform snippet to configure the node IAM role or deploy the EBS CSI driver.
